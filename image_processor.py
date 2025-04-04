@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import numpy as np
 from PIL import Image, ImageTk, ImageDraw
+import cv2
 
 class ImageProcessor:
     def __init__(self, root):
@@ -138,6 +139,10 @@ class ImageProcessor:
         )
         if file_path:
             self.image = Image.open(file_path)
+            image_np = np.array(self.image, dtype=np.uint8)
+            mat = cv2.cvtColor(image_np, cv2.COLOR_RGB2LAB)
+            image_np = np.array(mat, dtype=np.uint8)
+            self.image = Image.fromarray(image_np)
             self.original_image = self.image.copy()
             self.update_image()
     
