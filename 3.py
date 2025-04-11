@@ -147,13 +147,23 @@ def generate_transparent_rectangle(center, size, color, aspect_ratio=1, rotation
     width = size
     height = int(size * aspect_ratio)
 
-    # 创建一个透明背景的图像
-    img = np.zeros((height, width, 4), dtype=np.uint8)
-
-    # 计算矩形的顶点
+    # 计算矩形顶点
     rect = ((center[0], center[1]), (width, height), rotation_angle)
     box = cv2.boxPoints(rect)
-    box = np.int0(box)
+    box = np.int32(box)
+
+    # 找到包含矩形的最小外接矩形，以此确定图像大小
+    x, y, w, h = cv2.boundingRect(box)
+    img_width = w
+    img_height = h
+
+    # 创建一个透明背景的图像，大小为最小外接矩形大小
+    img = np.zeros((img_height, img_width, 4), dtype=np.uint8)
+    img[:, :, 3] = 0  # 初始化alpha通道为透明
+
+    # 调整矩形顶点坐标，使其相对于新图像坐标系统
+    box[:, 0] -= x
+    box[:, 1] -= y
 
     # 绘制矩形
     if is_filled:
@@ -183,15 +193,15 @@ def draw_transparent_circle(center, size, color, is_filled=False):
     return img
 
 # 创建一个透明背景的图像
-image = np.zeros((500, 500, 4), dtype=np.uint8)
-center = (40, 100)
-size = 400
-color = (0, 255, 0)  # 绿色，完全不透明
-aspect_ratio = 1
-rotation_angle = 60
+image = np.zeros((1000, 1000, 4), dtype=np.uint8)
+center = (500, 500)
+size = 200
+color = (0, 255, 0, 255)  # 绿色，完全不透明
+aspect_ratio = 2
+rotation_angle = 30
 is_filled = True
 
-result = generate_transparent_triangle(center, size, color, aspect_ratio, rotation_angle, is_filled)
+result = generate_transparent_rectangle(center, size, color, aspect_ratio, rotation_angle, is_filled)
 
 # 保存图像
 cv2.imwrite('diamond.png', result)
