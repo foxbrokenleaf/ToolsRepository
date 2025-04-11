@@ -3,6 +3,8 @@ import numpy as np
 import random
 from PIL import Image, ImageDraw
 import math
+import matplotlib.pyplot as plt
+from scipy.stats import norm
 
     # # 创建一个透明背景的图像
     # image = np.zeros((500, 500, 4), dtype=np.uint8)
@@ -239,57 +241,88 @@ def overlay_images(image_a_path, image_b_paths, overlap_ratio=0, compactness=1):
         # 打乱图片 B 的顺序
         random.shuffle(image_b_paths)
 
-        used_positions = []
+        # 生成 4 条正态分布曲线
+        draw = ImageDraw.Draw(image_a)
+        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]
+        for i in range(4):
+            center_x = image_a.width // 2
+            center_y = image_a.height // 2
+            std_x = (image_a.width) / (4 * compactness)
+            std_y = (image_a.height) / (4 * compactness)
+            curve_points = []
+            for x in range(image_a.width):
+                y = int(np.random.normal(center_y, std_y))
+                curve_points.append((x, y))
+            draw.line(curve_points, fill=colors[i], width=2)
+
+        positions = []
+        # 第一步：使用正态分布生成所有B图像在A中的坐标
         for image_b_path in image_b_paths:
-            # 打开图片 B
             image_b = Image.open(image_b_path)
             width_b, height_b = image_b.size
+            # 若B中的图像过大，则等比例缩放
+            if width_b > image_a.width or height_b > image_a.height:
+                ratio_b = min(image_a.width / width_b, image_a.height / height_b)
+                new_width_b = int(width_b * ratio_b)
+                new_height_b = int(height_b * ratio_b)
+                image_b = image_b.resize((new_width_b, new_height_b), Image.LANCZOS)
+                width_b, height_b = image_b.size
 
-            # 计算重叠宽度和高度
-            overlap_width = int(width_b * overlap_ratio)
-            overlap_height = int(height_b * overlap_ratio)
+            # 根据紧凑性调整正态分布的标准差
+            std_x = (image_a.width - width_b) / (4 * compactness)
+            std_y = (image_a.height - height_b) / (4 * compactness)
+            center_x = image_a.width // 2
+            center_y = image_a.height // 2
+            x_offset = int(np.random.normal(center_x, std_x))
+            y_offset = int(np.random.normal(center_y, std_y))
+            positions.append((x_offset, y_offset))
 
-            # 尝试找到一个不重叠的位置
-            found = False
-            max_attempts = 1000
-            attempts = 0
-            while not found and attempts < max_attempts:
-                # 根据紧凑性调整随机位置的范围
-                center_x = image_a.width // 2
-                center_y = image_a.height // 2
-                x_range = int((image_a.width - width_b) / compactness)
-                y_range = int((image_a.height - height_b) / compactness)
-                x_min = max(0, center_x - x_range // 2)
-                x_max = min(image_a.width - width_b, center_x + x_range // 2)
-                y_min = max(0, center_y - y_range // 2)
-                y_max = min(image_a.height - height_b, center_y + y_range // 2)
-                x_offset = random.randint(x_min, x_max)
-                y_offset = random.randint(y_min, y_max)
+        # 第二步：根据重叠率计算重叠（若为0则没有重叠）
+        if overlap_ratio > 0:
+            for i in range(len(positions)):
+                x_offset, y_offset = positions[i]
+                image_b = Image.open(image_b_paths[i])
+                width_b, height_b = image_b.size
+                overlap_width = int(width_b * overlap_ratio)
+                overlap_height = int(height_b * overlap_ratio)
+                # 调整坐标以考虑重叠
+                for j in range(i + 1, len(positions)):
+                    x_offset_other, y_offset_other = positions[j]
+                    image_b_other = Image.open(image_b_paths[j])
+                    width_b_other, height_b_other = image_b_other.size
+                    if abs(x_offset - x_offset_other) < overlap_width or abs(y_offset - y_offset_other) < overlap_height:
+                        # 计算新的坐标以避免重叠
+                        # 这里简单地调整坐标，实际情况可能需要更复杂的处理
+                        x_offset += overlap_width
+                        y_offset += overlap_height
+                        positions[i] = (x_offset, y_offset)
 
-                new_rect = (x_offset, y_offset, x_offset + width_b, y_offset + height_b)
-                if overlap_ratio == 0:
-                    # 检查是否与已使用的位置重叠
-                    overlap = False
-                    for rect in used_positions:
-                        if (
-                            new_rect[0] < rect[2] and
-                            new_rect[2] > rect[0] and
-                            new_rect[1] < rect[3] and
-                            new_rect[3] > rect[1]
-                        ):
-                            overlap = True
-                            break
-                    if not overlap:
-                        found = True
-                else:
-                    found = True
-                attempts += 1
+        # 第三步：重新根据正态分布将B中距离中心过远的图像重新生成坐标
+        for i in range(len(positions)):
+            x_offset, y_offset = positions[i]
+            center_x = image_a.width // 2
+            center_y = image_a.height // 2
+            distance = np.sqrt((x_offset - center_x) ** 2 + (y_offset - center_y) ** 2)
+            if distance > (image_a.width + image_a.height) / 4:
+                image_b = Image.open(image_b_paths[i])
+                width_b, height_b = image_b.size
+                std_x = (image_a.width - width_b) / (4 * compactness)
+                std_y = (image_a.height - height_b) / (4 * compactness)
+                x_offset = int(np.random.normal(center_x, std_x))
+                y_offset = int(np.random.normal(center_y, std_y))
+                positions[i] = (x_offset, y_offset)
 
-            if found:
-                # 记录已使用的位置
-                used_positions.append(new_rect)
-                # 粘贴图片 B 到图片 A 上
-                image_a.paste(image_b, (x_offset, y_offset), image_b)
+        # 粘贴图片 B 到图片 A 上
+        for i, (x_offset, y_offset) in enumerate(positions):
+            image_b = Image.open(image_b_paths[i])
+            width_b, height_b = image_b.size
+            # 若B中的图像过大，则等比例缩放
+            if width_b > image_a.width or height_b > image_a.height:
+                ratio_b = min(image_a.width / width_b, image_a.height / height_b)
+                new_width_b = int(width_b * ratio_b)
+                new_height_b = int(height_b * ratio_b)
+                image_b = image_b.resize((new_width_b, new_height_b), Image.LANCZOS)
+            image_a.paste(image_b, (x_offset, y_offset), image_b)
 
         return image_a
 
@@ -298,6 +331,7 @@ def overlay_images(image_a_path, image_b_paths, overlap_ratio=0, compactness=1):
     except Exception as e:
         print(f"错误: 发生了一个未知错误: {e}")
     return None
+
 
 # # 创建一个透明背景的图像
 # image = np.zeros((200, 200, 4), dtype=np.uint8)
@@ -360,7 +394,7 @@ if __name__ == "__main__":
             print(f"[{counter}] -> {image_function}")
             Bs.append(f"tmp/{counter}.png")
             counter += 1
-        result_image = overlay_images(A, Bs, overlap_ratio, 0.0001)
+        result_image = overlay_images(A, Bs, overlap_ratio, 1)
         if result_image:
             result_image.save(f"res/1/{i}.jpg")
         print(Bs)
