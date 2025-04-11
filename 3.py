@@ -103,11 +103,6 @@ def generate_diamond_image(center, size, color, aspect_ratio=1, rotation_angle=0
     return image
 
 def generate_transparent_triangle(center, size, color, aspect_ratio=1, rotation_angle=0, is_filled=False):
-    # 计算图片尺寸
-    max_dim = int(size * max(1, aspect_ratio))
-    image_size = (max_dim * 2, max_dim * 2, 4)
-    image = np.zeros(image_size, dtype=np.uint8)
-
     # 计算三角形的顶点
     half_size = size // 2
     points = np.array([
@@ -120,11 +115,26 @@ def generate_transparent_triangle(center, size, color, aspect_ratio=1, rotation_
     rotation_matrix = cv2.getRotationMatrix2D(tuple(center), rotation_angle, 1)
     points = cv2.transform(np.array([points]), rotation_matrix)[0]
 
+    # 计算包含三角形的最小矩形边界
+    min_x = np.min(points[:, 0])
+    max_x = np.max(points[:, 0])
+    min_y = np.min(points[:, 1])
+    max_y = np.max(points[:, 1])
+    width = max_x - min_x + 1
+    height = max_y - min_y + 1
+
+    # 调整坐标，使三角形位于图像起始坐标 (0, 0) 处
+    adjusted_points = points - np.array([min_x, min_y])
+
+    # 创建图像
+    image_size = (height, width, 4)
+    image = np.zeros(image_size, dtype=np.uint8)
+
     # 绘制三角形
     if is_filled:
-        cv2.fillPoly(image, [points], color)
+        cv2.fillPoly(image, [adjusted_points], color)
     else:
-        cv2.polylines(image, [points], isClosed=True, color=color, thickness=1)
+        cv2.polylines(image, [adjusted_points], isClosed=True, color=color, thickness=1)
 
     # 提取透明通道
     alpha_channel = np.any(image[:, :, :3] != [0, 0, 0], axis=-1).astype(np.uint8) * 255
@@ -174,14 +184,14 @@ def draw_transparent_circle(center, size, color, is_filled=False):
 
 # 创建一个透明背景的图像
 image = np.zeros((500, 500, 4), dtype=np.uint8)
-center = (100, 100)
-size = 200
+center = (40, 100)
+size = 400
 color = (0, 255, 0)  # 绿色，完全不透明
 aspect_ratio = 1
-rotation_angle = 30
+rotation_angle = 60
 is_filled = True
 
-result = generate_diamond_image(center, size, color, aspect_ratio, rotation_angle, is_filled)
+result = generate_transparent_triangle(center, size, color, aspect_ratio, rotation_angle, is_filled)
 
 # 保存图像
 cv2.imwrite('diamond.png', result)
