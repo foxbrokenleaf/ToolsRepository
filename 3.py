@@ -196,16 +196,115 @@ def draw_transparent_circle(center, size, color, is_filled=False):
 
     return img
 
-# 创建一个透明背景的图像
-image = np.zeros((200, 200, 4), dtype=np.uint8)
-center = (500, 500)
-size = 100
-color = (0, 255, 0, 255)  # 绿色，完全不透明
-aspect_ratio = 2
-rotation_angle = 30
-is_filled = True
+def overlay_images(image_a_path, image_b_paths, overlap_ratio=0):
+    try:
+        # 打开图片 A
+        image_a = Image.open(image_a_path)
+        width_a, height_a = image_a.size
 
-result = draw_transparent_circle(center, size, color, is_filled)
+        # 计算图片 B 的总宽度和总高度
+        total_width_b = 0
+        total_height_b = 0
+        max_width_b = 0
+        max_height_b = 0
+        for image_b_path in image_b_paths:
+            image_b = Image.open(image_b_path)
+            width_b, height_b = image_b.size
+            total_width_b += width_b
+            total_height_b += height_b
+            max_width_b = max(max_width_b, width_b)
+            max_height_b = max(max_height_b, height_b)
 
-# 保存图像
-cv2.imwrite('diamond.png', result)
+        # 考虑重叠部分
+        total_overlap_width = (len(image_b_paths) - 1) * int(
+            sum([Image.open(path).size[0] for path in image_b_paths]) / len(image_b_paths) * overlap_ratio
+        )
+        total_overlap_height = (len(image_b_paths) - 1) * int(
+            sum([Image.open(path).size[1] for path in image_b_paths]) / len(image_b_paths) * overlap_ratio
+        )
+        total_width_b -= total_overlap_width
+        total_height_b -= total_overlap_height
+
+        # 等比例缩放图片 A 的宽度和高度以适应图片 B 的总宽度和总高度
+        ratio_width = total_width_b / width_a if total_width_b > width_a else 1
+        ratio_height = total_height_b / height_a if total_height_b > height_a else 1
+        ratio = max(ratio_width, ratio_height)
+        new_width = int(width_a * ratio)
+        new_height = int(height_a * ratio)
+        image_a = image_a.resize((new_width, new_height), Image.LANCZOS)
+
+        # 打乱图片 B 的顺序
+        random.shuffle(image_b_paths)
+
+        used_positions = []
+        for image_b_path in image_b_paths:
+            # 打开图片 B
+            image_b = Image.open(image_b_path)
+            width_b, height_b = image_b.size
+
+            # 计算重叠宽度和高度
+            overlap_width = int(width_b * overlap_ratio)
+            overlap_height = int(height_b * overlap_ratio)
+
+            # 尝试找到一个不重叠的位置
+            found = False
+            max_attempts = 1000
+            attempts = 0
+            while not found and attempts < max_attempts:
+                x_offset = random.randint(0, image_a.width - width_b)
+                y_offset = random.randint(0, image_a.height - height_b)
+                new_rect = (x_offset, y_offset, x_offset + width_b, y_offset + height_b)
+                if overlap_ratio == 0:
+                    # 检查是否与已使用的位置重叠
+                    overlap = False
+                    for rect in used_positions:
+                        if (
+                            new_rect[0] < rect[2] and
+                            new_rect[2] > rect[0] and
+                            new_rect[1] < rect[3] and
+                            new_rect[3] > rect[1]
+                        ):
+                            overlap = True
+                            break
+                    if not overlap:
+                        found = True
+                else:
+                    found = True
+                attempts += 1
+
+            if found:
+                # 记录已使用的位置
+                used_positions.append(new_rect)
+                # 粘贴图片 B 到图片 A 上
+                image_a.paste(image_b, (x_offset, y_offset), image_b)
+
+        return image_a
+
+    except FileNotFoundError:
+        print("错误: 未找到图片文件!")
+    except Exception as e:
+        print(f"错误: 发生了一个未知错误: {e}")
+    return None
+
+# # 创建一个透明背景的图像
+# image = np.zeros((200, 200, 4), dtype=np.uint8)
+# center = (500, 500)
+# size = 100
+# color = (0, 255, 0)  # 绿色，完全不透明
+# aspect_ratio = 2
+# rotation_angle = 30
+# is_filled = True
+
+# result = draw_transparent_circle(center, size, color, is_filled)
+
+# # 保存图像
+# cv2.imwrite('1.png', result)
+
+# 示例使用
+if __name__ == "__main__":
+    image_a_path = "img/1/1.jpg"
+    image_b_paths = ["1.png", "2.png","1.png", "2.png"]
+    overlap_ratio = 0  # 20% 的重叠率
+    result_image = overlay_images(image_a_path, image_b_paths, overlap_ratio)
+    if result_image:
+        result_image.save("3.jpg")
