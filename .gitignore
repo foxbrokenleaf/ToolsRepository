@@ -2,3 +2,5 @@ img/
 res/
 resbin/
 tmp/
+*.jpg
+*.png

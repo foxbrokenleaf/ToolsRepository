@@ -19,7 +19,7 @@ import math
     # cv2.imwrite('diamond.png', result)
 
 
-def generate_star_png(center, size, color, aspect_ratio=1, rotation_angle=0, is_filled=False):
+def generate_star_png(center = (500, 500), size = 100, color = (0, 255, 0), aspect_ratio=1, rotation_angle=0, is_filled=True):
     # 计算五角星的顶点
     def calculate_star_points(center, size, aspect_ratio, rotation_angle):
         points = []
@@ -57,15 +57,17 @@ def generate_star_png(center, size, color, aspect_ratio=1, rotation_angle=0, is_
     # cv2.imwrite('star.png', canvas)
     return canvas
 
-def generate_diamond_image(center, size, color, aspect_ratio=1, rotation_angle=0, is_filled=False):
+def generate_diamond_image(center=(500, 500), size=100, color=(0, 255, 0), aspect_ratio=1, rotation_angle=0, is_filled=True):
+    # 根据 aspect_ratio 计算两条对角线的一半长度
+    half_diagonal_1 = size / 2
+    half_diagonal_2 = half_diagonal_1 * aspect_ratio
+
     # 计算菱形的四个顶点（未旋转时）
-    half_size_x = int(size * aspect_ratio / 2)
-    half_size_y = size / 2
     points = np.array([
-        [half_size_x, -half_size_y],
-        [half_size_x, half_size_y],
-        [-half_size_x, half_size_y],
-        [-half_size_x, -half_size_y]
+        [0, -half_diagonal_1],
+        [half_diagonal_2, 0],
+        [0, half_diagonal_1],
+        [-half_diagonal_2, 0]
     ], dtype=np.int32)
 
     # 旋转菱形
@@ -102,7 +104,7 @@ def generate_diamond_image(center, size, color, aspect_ratio=1, rotation_angle=0
 
     return image
 
-def generate_transparent_triangle(center, size, color, aspect_ratio=1, rotation_angle=0, is_filled=False):
+def generate_transparent_triangle(center = (500, 500), size = 100, color = (0, 255, 0), aspect_ratio=1, rotation_angle=0, is_filled=True):
     # 计算三角形的顶点
     half_size = size // 2
     points = np.array([
@@ -142,7 +144,8 @@ def generate_transparent_triangle(center, size, color, aspect_ratio=1, rotation_
 
     return image
 
-def generate_transparent_rectangle(center, size, color, aspect_ratio=1, rotation_angle=0, is_filled=False):
+def generate_transparent_rectangle(center = (500, 500), size = 100, color = (0, 255, 0), aspect_ratio=1, rotation_angle=0, is_filled=True):
+    t_color = (color[0], color[1], color[2], 255)
     # 计算矩形的宽度和高度
     width = size
     height = int(size * aspect_ratio)
@@ -167,13 +170,13 @@ def generate_transparent_rectangle(center, size, color, aspect_ratio=1, rotation
 
     # 绘制矩形
     if is_filled:
-        cv2.fillPoly(img, [box], color)
+        cv2.fillPoly(img, [box], t_color)
     else:
-        cv2.polylines(img, [box], True, color, 2)
+        cv2.polylines(img, [box], True, t_color, 2)
 
     return img
 
-def draw_transparent_circle(center, size, color, is_filled=False):
+def draw_transparent_circle(center = (500, 500), size = 100, color = (0, 255, 0), aspect_ratio=1, rotation_angle=0, is_filled=True):
     # 确保 size 是可迭代对象，如果是整数，将其转换为元组
     if isinstance(size, int):
         size = (size, size)
@@ -295,16 +298,52 @@ def overlay_images(image_a_path, image_b_paths, overlap_ratio=0):
 # rotation_angle = 30
 # is_filled = True
 
-# result = draw_transparent_circle(center, size, color, is_filled)
+# result = draw_transparent_circle()
 
 # # 保存图像
 # cv2.imwrite('1.png', result)
 
 # 示例使用
+# if __name__ == "__main__":
+#     image_a_path = "img/1/1.jpg"
+#     image_b_paths = ["1.png", "2.png","1.png", "2.png"]
+#     overlap_ratio = 0  # 20% 的重叠率
+#     result_image = overlay_images(image_a_path, image_b_paths, overlap_ratio)
+#     if result_image:
+#         result_image.save("3.jpg")
+
 if __name__ == "__main__":
-    image_a_path = "img/1/1.jpg"
-    image_b_paths = ["1.png", "2.png","1.png", "2.png"]
-    overlap_ratio = 0  # 20% 的重叠率
-    result_image = overlay_images(image_a_path, image_b_paths, overlap_ratio)
-    if result_image:
-        result_image.save("3.jpg")
+    image_function_list = [generate_star_png, generate_diamond_image, generate_transparent_triangle, generate_transparent_rectangle, draw_transparent_circle]
+    image_color = [
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (255, 255, 0),
+        (255, 0, 255),
+        (0, 255, 255),
+        (0, 0, 0),
+        (255, 255, 255),
+    ]
+    image = np.zeros((200, 200, 4), dtype=np.uint8)
+    center = (500, 500)
+    size = 100
+    color = (0, 255, 0)  # 绿色，完全不透明
+    aspect_ratio = 2
+    rotation_angle = 30
+    is_filled = True
+    counter = 1
+
+    for i in range(0, 5):
+        A = f"img/1/{random.randint(1, 30)}.jpg"
+        for num in range(0, 5):
+            image_function = random.choice(image_function_list)
+            res = image_function(size = random.randint(50, 100), 
+                                color = random.choice(image_color),
+                                aspect_ratio = random.choice(np.arange(0.5,1.5, 0.1)),
+                                rotation_angle = random.randint(0, 360)
+                                )
+            # print(counter)
+            cv2.imwrite(f"tmp/{counter}.png", res)
+            print(f"[{counter}] -> {image_function}")
+            counter += 1
+        Bs = ""
