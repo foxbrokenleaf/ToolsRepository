@@ -199,7 +199,7 @@ def draw_transparent_circle(center = (500, 500), size = 100, color = (0, 255, 0)
 
     return img
 
-def overlay_images(image_a_path, image_b_paths, overlap_ratio=0):
+def overlay_images(image_a_path, image_b_paths, overlap_ratio=0, compactness=1):
     try:
         # 打开图片 A
         image_a = Image.open(image_a_path)
@@ -254,8 +254,18 @@ def overlay_images(image_a_path, image_b_paths, overlap_ratio=0):
             max_attempts = 1000
             attempts = 0
             while not found and attempts < max_attempts:
-                x_offset = random.randint(0, image_a.width - width_b)
-                y_offset = random.randint(0, image_a.height - height_b)
+                # 根据紧凑性调整随机位置的范围
+                center_x = image_a.width // 2
+                center_y = image_a.height // 2
+                x_range = int((image_a.width - width_b) / compactness)
+                y_range = int((image_a.height - height_b) / compactness)
+                x_min = max(0, center_x - x_range // 2)
+                x_max = min(image_a.width - width_b, center_x + x_range // 2)
+                y_min = max(0, center_y - y_range // 2)
+                y_max = min(image_a.height - height_b, center_y + y_range // 2)
+                x_offset = random.randint(x_min, x_max)
+                y_offset = random.randint(y_min, y_max)
+
                 new_rect = (x_offset, y_offset, x_offset + width_b, y_offset + height_b)
                 if overlap_ratio == 0:
                     # 检查是否与已使用的位置重叠
@@ -332,12 +342,15 @@ if __name__ == "__main__":
     rotation_angle = 30
     is_filled = True
     counter = 1
+    
 
     for i in range(0, 5):
+        overlap_ratio = 0  # 20% 的重叠率
         A = f"img/1/{random.randint(1, 30)}.jpg"
-        for num in range(0, 5):
+        Bs = []
+        for num in range(0, 10):
             image_function = random.choice(image_function_list)
-            res = image_function(size = random.randint(50, 100), 
+            res = image_function(size = random.randint(200, 220), 
                                 color = random.choice(image_color),
                                 aspect_ratio = random.choice(np.arange(0.5,1.5, 0.1)),
                                 rotation_angle = random.randint(0, 360)
@@ -345,5 +358,9 @@ if __name__ == "__main__":
             # print(counter)
             cv2.imwrite(f"tmp/{counter}.png", res)
             print(f"[{counter}] -> {image_function}")
+            Bs.append(f"tmp/{counter}.png")
             counter += 1
-        Bs = ""
+        result_image = overlay_images(A, Bs, overlap_ratio, 0.0001)
+        if result_image:
+            result_image.save(f"res/1/{i}.jpg")
+        print(Bs)
