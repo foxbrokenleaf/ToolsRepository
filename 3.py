@@ -174,6 +174,10 @@ def generate_transparent_rectangle(center, size, color, aspect_ratio=1, rotation
     return img
 
 def draw_transparent_circle(center, size, color, is_filled=False):
+    # 确保 size 是可迭代对象，如果是整数，将其转换为元组
+    if isinstance(size, int):
+        size = (size, size)
+
     # 计算图像的大小，确保足够容纳圆形
     diameter = max(size) * 2
     img_size = (diameter, diameter, 4)
@@ -193,15 +197,15 @@ def draw_transparent_circle(center, size, color, is_filled=False):
     return img
 
 # 创建一个透明背景的图像
-image = np.zeros((1000, 1000, 4), dtype=np.uint8)
+image = np.zeros((200, 200, 4), dtype=np.uint8)
 center = (500, 500)
-size = 200
+size = 100
 color = (0, 255, 0, 255)  # 绿色，完全不透明
 aspect_ratio = 2
 rotation_angle = 30
 is_filled = True
 
-result = generate_transparent_rectangle(center, size, color, aspect_ratio, rotation_angle, is_filled)
+result = draw_transparent_circle(center, size, color, is_filled)
 
 # 保存图像
 cv2.imwrite('diamond.png', result)
