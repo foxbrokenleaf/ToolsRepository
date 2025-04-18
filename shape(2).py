@@ -337,4 +337,4 @@ def batch_convert_images(input_folder, output_folder, width=800, height=480):
 create_number = 400
 for i in range(create_number):
     generate_image(i)
-batch_convert_images("res/1", "resbin/1")
+batch_convert_images("output", "resbin/3")

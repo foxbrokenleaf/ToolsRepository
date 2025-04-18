@@ -5,3 +5,6 @@ tmp/
 *.jpg
 *.png
 *.bin
+build/
+dist/
+output/
