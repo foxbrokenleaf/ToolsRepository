@@ -1,0 +1,8 @@
+color,LowerHue,LowerSaturation,LowerValue,UpperHue,UpperSaturation,UpperValue
+yellow,24,71,233,42,255,255
+cyan-blue,58,56,240,95,105,255
+red,153,124,109,176,255,255
+purple,140,124,203,155,233,255
+blue,79,214,225,116,255,255
+white,0,0,83,174,30,255
+green,37,79,195,53,255,255
