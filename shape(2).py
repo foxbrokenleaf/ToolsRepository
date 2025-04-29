@@ -160,6 +160,33 @@ def draw_tilted_diamond_safe(draw, color, w, margin=MARGIN):
             return True
     return False
 
+def draw_trapezoid(draw, center, width, height, top_ratio, color, angle=0):
+    """
+    绘制梯形
+    center: 中心点坐标
+    width: 底边宽度
+    height: 高度
+    top_ratio: 顶边与底边的比例
+    color: 填充颜色
+    angle: 旋转角度
+    """
+    x, y = center
+    bottom_half = width / 2
+    top_half = (width * top_ratio) / 2
+    
+    points = [
+        (x - top_half, y - height/2),    # 左上
+        (x + top_half, y - height/2),    # 右上
+        (x + bottom_half, y + height/2),  # 右下
+        (x - bottom_half, y + height/2)   # 左下
+    ]
+    
+    points = rotate_points(points, center, angle)
+    if get_non_overlapping_position_from_points(points):
+        draw.polygon(points, fill=color)
+        return True
+    return False
+
 # ==== 主函数 ====
 def generate_image(image_index):
     global placed_boxes
@@ -172,7 +199,9 @@ def generate_image(image_index):
         'triangle': 0,
         'star': 0,
         'diamond': 0,
-        'diamond_tilted': 0
+        'diamond_tilted': 0,
+        'trapezoid1': 0,
+        'trapezoid2': 0
     }
 
     img = load_random_background()
@@ -183,7 +212,7 @@ def generate_image(image_index):
     current_shapes = 0
     
     # 确保每种形状至少有一个
-    shape_types = ['rect', 'circle', 'triangle', 'star', 'diamond', 'diamond_tilted']
+    shape_types = ['rect', 'circle', 'triangle', 'star', 'diamond', 'diamond_tilted', 'trapezoid1', 'trapezoid2']
     random.shuffle(shape_types)  # 随机打乱顺序
     
     # 首先尝试生成每种形状至少一个
@@ -296,6 +325,32 @@ def generate_shape(draw, shape_type, color, shape_counts):
                 shape_counts['diamond_tilted'] += 1
                 return True
     
+    elif shape_type == 'trapezoid1':
+        for attempt in range(max_attempts):
+            width = random.randint(40, 80)
+            height = random.randint(30, 60)
+            top_ratio = 0.6  # 顶边是底边的60%
+            cx = random.randint(width + 25, canvas_size[0] - width - 25)
+            cy = random.randint(height + 25, canvas_size[1] - height - 25)
+            angle = random.randint(0, 359)
+            
+            if draw_trapezoid(draw, (cx, cy), width, height, top_ratio, color, angle):
+                shape_counts['trapezoid1'] = shape_counts.get('trapezoid1', 0) + 1
+                return True
+                
+    elif shape_type == 'trapezoid2':
+        for attempt in range(max_attempts):
+            width = random.randint(40, 80)
+            height = random.randint(30, 60)
+            top_ratio = 0.3  # 顶边是底边的30%
+            cx = random.randint(width + 25, canvas_size[0] - width - 25)
+            cy = random.randint(height + 25, canvas_size[1] - height - 25)
+            angle = random.randint(0, 359)
+            
+            if draw_trapezoid(draw, (cx, cy), width, height, top_ratio, color, angle):
+                shape_counts['trapezoid2'] = shape_counts.get('trapezoid2', 0) + 1
+                return True
+    
     return False
 
 def convert_image_to_rgb565(image: Image.Image):
@@ -334,7 +389,7 @@ def batch_convert_images(input_folder, output_folder, width=800, height=480):
     print("\n🎉 全部完成！")
 
 # ==== 批量生成 ====
-create_number = 400
+create_number = 10
 for i in range(create_number):
     generate_image(i)
 batch_convert_images("output", "resbin/3")
